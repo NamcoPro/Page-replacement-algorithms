@@ -20,10 +20,10 @@ class PM_2ndchance(Physical_Memory):
     def update_with_page(self, page):
         """Page handler. Puts pages on the space, dereferences them, and updates
         faults."""
-        page_loaded, index = self.address_in_space(page)
+        page_hit, index = self.address_in_space(page)
         #the case where there is a page hit
         #the page is updated and sent into the back of the list
-        if(page_loaded):
+        if(page_hit):
             self.send_page_back(index, 1)
 
         #the case where a page is added to the end of the list

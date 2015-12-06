@@ -3,10 +3,12 @@ class Page:
         """addr will be the page adress abstracted to a number.
         Operation will be handled with a 'w' for write, 'r' for read.
         Ref serves as the referenced bit.
+        Mod serves as the modified bit.
         val serves as a distance or time regarding other algorithms."""
         self.addr = addr
         self.operation = operation
         self.ref = 1
+        self.mod = 0
         self.val = val
 
     def referenced(self):
@@ -19,6 +21,16 @@ class Page:
     def rereference(self):
         self.ref = 1
 
+    def modified(self):
+        return self.mod
+
+    def modify(self):
+        """In the case of the wsclock algorithm with writes included."""
+        self.mod = 1
+
+    def umodify(self):
+        self.mod = 0
+
     def wants_write(self):
         return (self.operation == "w")
 
@@ -27,6 +39,9 @@ class Page:
 
     def address(self):
         return self.addr
+
+    def assign_value(self, val):
+        self.val = val
 
     def value(self):
         return self.val
