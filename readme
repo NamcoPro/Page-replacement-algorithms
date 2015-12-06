@@ -1,0 +1,41 @@
+###Readme
+###Memory Management
+
+This project attemps to simulate page replacement algorithms.
+The ones included are the optimal replacement algorithm, the second chance algorithm,
+and the wsclock page replacement algorithm.
+
+Requirements to run:
+Python 2.7
+A file containing integers representing page addresses.
+
+A brief description of the scripts as follows:
+
+p_memory.py
+This script contains two classes: Page and Physical_Memory. Both are used as baseclasses for
+the three algorithms.
+
+second.py
+The second chancepage replacement algorithm. It implements a PM_2ndchance class
+to handle the physical memory using the second chance algorithm.
+
+optimal.py
+The optimal page replacement algorithm. It implements a PM_optimal class to handle
+the physical memory using the second chance algorithm.
+
+wsclock.py
+The wsclock page replacement algorithm. It implements a WS_Page as a slight modified
+Page class and a PM_wsclock class to handle the physical memory using the wsclock page
+replacement algorithm.
+
+How to run:
+
+Both the second.py and optimal.py are run as follows
+
+python <script.py> <page_amount> <input_file>
+
+For example, let's say we want to run an optimal page replacement algorithm with a
+size buffer of 19 pages where every page is on a file "pages.txt". We would run it as
+
+python optimal.py 19 pages.txt
+

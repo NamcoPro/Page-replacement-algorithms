@@ -18,7 +18,7 @@ class PM_2ndchance(Physical_Memory):
         self.pages.append(tmp_page)
 
     def update_with_page(self, page):
-        """Page handler. Puts pages on the space, derefernces them, and updates
+        """Page handler. Puts pages on the space, dereferences them, and updates
         faults."""
         page_loaded, index = self.address_in_space(page)
         #the case where there is a page hit
@@ -65,7 +65,7 @@ def second_chance(page_amount, filename):
             current_page = Page(page_values[1], page_values[0])
 
         physical_memory.update_with_page(current_page)
-        #physical_memory.print_pages() for debugging
+        #physical_memory.print_pages() for debbugging
 
     print physical_memory.page_faults()
 

@@ -1,11 +1,13 @@
 class Page:
-    def __init__(self, value, operation = None):
-        """Value will be the page adress abstracted to a number.
+    def __init__(self, addr, val = 0, operation = None):
+        """addr will be the page adress abstracted to a number.
         Operation will be handled with a 'w' for write, 'r' for read.
-        Ref serves as the referenced bit."""
-        self.value = value
+        Ref serves as the referenced bit.
+        val serves as a distance or time regarding other algorithms."""
+        self.addr = addr
         self.operation = operation
         self.ref = 1
+        self.val = val
 
     def referenced(self):
         return self.ref
@@ -24,7 +26,10 @@ class Page:
         return (self.operation == "r")
 
     def address(self):
-        return self.value
+        return self.addr
+
+    def value(self):
+        return self.val
 
 class Physical_Memory:
     """Mimics a physical address space of pages."""
