@@ -12,7 +12,7 @@ class PM_wsclock(Physical_Memory):
     algorithm. The pages will be put on a 'circular list'."""
     def __init__(self, size = 0, tau = 5):
         """the clock_arm is for the traversing the circular list, the -1
-        is for convenience.
+        is for convenience. Lists can be accessed with -1.
         tau is the parameter for replacing pages.
         virtual_clock determines the page values and how old they are."""
         Physical_Memory.__init__(self, size)
@@ -25,11 +25,18 @@ class PM_wsclock(Physical_Memory):
         return (self.virtual_clock - self.pages[self.clock_arm].value())
 
     def replace_page(self, page):
-        """Replaces a page when a page fualt is happening."""
+        """Replaces a page when a page fault is happening."""
         self.pages[self.clock_arm] = page
         self.pages[self.clock_arm].assign_value(self.virtual_clock)
         self.update_arm()
 
+    def point_at(self, index):
+        """Updates the clock arm to the current index."""
+        self.clock_arm = index
+
+    def page_arm(self):
+        """The returns the page in the current arm position."""
+        return self.pages[self.clock_arm]
 
     def update_arm(self):
         """Updates the clock_arm on the circular list."""
@@ -60,31 +67,81 @@ class PM_wsclock(Physical_Memory):
 
     def handle_read(self, page):
         """Handles the incoming page if it wants a read. If the requested
-        address isn't on the physical space, then the page request is trashed
-        since it's asking for a page address that doesn't exist."""
+        address isn't on the physical space, then the page address is added
+        without a modified bit."""
         page_hit, index = self.address_in_space(page)
 
         if(page_hit):
+            #refeferencing the bit, no big deal.
             self.pages[index].rereference()
             self.pages[index].assign_value(self.virtual_clock)
 
         else:
-            #have to ask what to do when it asks to read a page not in
-            #the physical memory
-            #it can always replace another page, but then what's the deal
-            #having a read and write operation?
             self.faults += 1
+
+            #candidates of indices in case nothing is found
+            #class 0: not referenced and not modifed
+            #class 1: not referenced and modified
+            #class 2: referenced and not modified
+            #class 3: referenced and modified
+            candidates = [[] for i in range(4)]
+
+            #for traversing the clock_arm
+            once = 1
+            current_arm = self.clock_arm
+            while(once):
+                if(self.page_arm().referenced() and self.page_arm().modified()):
+                    self.page_arm().dereference()
+                    candidates[3].append(self.clock_arm)
+
+                elif(self.page_arm().referenced()):
+                    self.page_arm().dereference()
+                    candidates[2].append(self.clock_arm)
+
+                elif(self.page_arm().modified()):
+                    candidates[1].append(self.clock_arm)
+
+                #Here it looks for the age of the page since it's not referenced
+                #and not modified. if it's older than tau then it is removed.
+                elif(self.page_age() > self.tau):
+                    self.replace_page(page)
+                    return
+
+                else:
+                    candidates[0].append(self.clock_arm)
+
+                self.update_arm()
+                self.update_clock()
+
+                if(current_arm == self.clock_arm):
+                    once = 0
+
+            #the loop in case nothing was found
+            for classes in candidates:
+                oldest = float("inf")
+                arm_pointer = None
+                for indices in classes:
+                    #the smallest value means it's the oldest
+                    if(self.pages[indices].value() < oldest):
+                        oldest = self.pages[indices].value()
+                        arm_pointer = indices
+
+                #something was found
+                if(arm_pointer != None):
+                    self.point_at(arm_pointer)
+                    self.replace_page(page)
+                    return
 
     def handle_write(self, page):
         """Handles the incoming page if it wants to write. If there's a hit,
         then the referenced page's modifed bit is actualized. If there's a
-        fault, then the algorithm is applied. This is absolutely disgusting.
-        You might as well not read this abomination of a function."""
+        fault, then the algorithm is applied. """
         page_hit, index = self.address_in_space(page)
 
         if(page_hit):
             #page hit for the modified bit
             self.pages[index].modify()
+            self.pages[index].rereference()
             self.pages[index].assign_value(self.virtual_clock)
 
         elif(not self.full()):
@@ -100,18 +157,58 @@ class PM_wsclock(Physical_Memory):
         else:
             self.faults += 1
 
-            while(1):
-                if(self.pages[self.clock_arm].referenced()):
-                    self.pages[self.clock_arm].dereference()
-                    self.pages[self.clock_arm].assign_value(self.virtual_clock)
+            #candidates of indices in case nothing is found
+            #class 0: not referenced and not modifed
+            #class 1: not referenced and modified
+            #class 2: referenced and not modified
+            #class 3: referenced and modified
+            candidates = [[] for i in range(4)]
 
-                elif(self.pages[self.clock_arm].modified()):
-                    pass
+            #for traversing the clock_arm
+            once = 1
+            current_arm = self.clock_arm
+            while(once):
+                if(self.page_arm().referenced() and self.page_arm().modified()):
+                    self.page_arm().dereference()
+                    candidates[3].append(self.clock_arm)
 
+                elif(self.page_arm().referenced()):
+                    self.page_arm().dereference()
+                    candidates[2].append(self.clock_arm)
+
+                elif(self.page_arm().modified()):
+                    candidates[1].append(self.clock_arm)
+
+                #Here it looks for the age of the page since it's not referenced
+                #and not modified. if it's older than tau then it is removed.
+                elif(self.page_age() > self.tau):
+                    self.replace_page(page)
+                    return
+
+                else:
+                    candidates[0].append(self.clock_arm)
 
                 self.update_arm()
                 self.update_clock()
 
+                if(current_arm == self.clock_arm):
+                    once = 0
+
+            #the loop in case nothing was found
+            for classes in candidates:
+                oldest = float("inf")
+                arm_pointer = None
+                for indices in classes:
+                    #the smallest value means it's the oldest
+                    if(self.pages[indices].value() < oldest):
+                        oldest = self.pages[indices].value()
+                        arm_pointer = indices
+
+                #something was found
+                if(arm_pointer != None):
+                    self.point_at(arm_pointer)
+                    self.replace_page(page)
+                    return
 
     def handle_no_operation(self, page):
         """Handles the incoming page without regards to operations."""
@@ -134,31 +231,58 @@ class PM_wsclock(Physical_Memory):
         else:
             self.faults += 1
 
-            #for the possible candidate
-            arm_pointer = None
-            oldest = -1
+            #candidates of indices in case nothing is found
+            #class 0: not referenced and not modifed
+            #class 1: not referenced and modified
+            #class 2: referenced and not modified
+            #class 3: referenced and modified
+            candidates = [[] for i in range(4)]
 
-            #go through the entire list until it finds an appropiate page
-            while(1):
-                #the case where it's referenced
-                if(self.pages[self.clock_arm].referenced()):
-                    #page gets dereferenced and updated on its time
-                    self.pages[self.clock_arm].dereference()
-                    self.pages[self.clock_arm].assign_value(self.virtual_clock)
+            #for traversing the clock_arm
+            once = 1
+            current_arm = self.clock_arm
+            while(once):
+                if(self.page_arm().referenced() and self.page_arm().modified()):
+                    self.page_arm().dereference()
+                    candidates[3].append(self.clock_arm)
 
-                #the case where it's unreferenced
+                elif(self.page_arm().referenced()):
+                    self.page_arm().dereference()
+                    candidates[2].append(self.clock_arm)
+
+                elif(self.page_arm().modified()):
+                    candidates[1].append(self.clock_arm)
+
+                #Here it looks for the age of the page since it's not referenced
+                #and not modified. if it's older than tau then it is removed.
                 elif(self.page_age() > self.tau):
                     self.replace_page(page)
-                    self.update_arm()
                     return
 
                 else:
-                    if(self.page_age() > oldest):
-                        oldest = self.page_age()
-                        arm_pointer = self.clock_arm
+                    candidates[0].append(self.clock_arm)
 
                 self.update_arm()
                 self.update_clock()
+
+                if(current_arm == self.clock_arm):
+                    once = 0
+
+            #the loop in case nothing was found
+            for classes in candidates:
+                oldest = float("inf")
+                arm_pointer = None
+                for indices in classes:
+                    #the smallest value means it's the oldest
+                    if(self.pages[indices].value() < oldest):
+                        oldest = self.pages[indices].value()
+                        arm_pointer = indices
+
+                #something was found
+                if(arm_pointer != None):
+                    self.point_at(arm_pointer)
+                    self.replace_page(page)
+                    return
 
 def wsclock(page_amount, tau, filename):
     physical_memory = PM_wsclock(page_amount, tau)
@@ -185,7 +309,7 @@ def wsclock(page_amount, tau, filename):
 
 if __name__ == '__main__':
     if(len(argv) < 4):
-        print "python wsclock.py <Number of physical memory pages>,"
+        print "python wsclock.py <Number of physical memory pages>",
         print "<tau> <access sequence file>"
 
     else:
